@@ -109,6 +109,10 @@ pub fn fill_env(env: &mut VarEnv) {
         "period_union".to_string(),
         DataType::Function("period_union".into(), qfunctions::period_union),
     );
+    env.insert(
+        "union_no_overlap".to_string(),
+        DataType::Function("union_no_overlap".into(), qfunctions::union_no_overlap),
+    );
 }
 
 mod qfunctions {
@@ -261,7 +265,7 @@ mod qfunctions {
         validate::args_length(&args, 1)?;
         let events: Vec<Event> = (&args[0]).try_into()?;
         // Run flood
-        let mut flooded_events = aw_transform::flood(events, chrono::Duration::seconds(5));
+        let mut flooded_events = aw_transform::flood(events, chrono::Duration::seconds(30));
         // Put events back into DataType::Event container
         let mut tagged_flooded_events = Vec::new();
         for event in flooded_events.drain(..) {
@@ -550,6 +554,24 @@ mod qfunctions {
         let events2: Vec<Event> = (&args[1]).try_into()?;
 
         let mut result = aw_transform::period_union(&events1, &events2);
+        let mut result_tagged = Vec::new();
+        for event in result.drain(..) {
+            result_tagged.push(DataType::Event(event));
+        }
+        Ok(DataType::List(result_tagged))
+    }
+    
+    pub fn union_no_overlap(
+        args: Vec<DataType>,
+        _env: &VarEnv,
+        _ds: &Datastore,
+    ) -> Result<DataType, QueryError> {
+        // typecheck
+        validate::args_length(&args, 2)?;
+        let events1: Vec<Event> = (&args[0]).try_into()?;
+        let events2: Vec<Event> = (&args[1]).try_into()?;
+
+        let mut result = aw_transform::union_no_overlap(&events1, &events2);
         let mut result_tagged = Vec::new();
         for event in result.drain(..) {
             result_tagged.push(DataType::Event(event));
